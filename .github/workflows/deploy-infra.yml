@@ -1,6 +1,9 @@
 name: destroy-infra
 
 on:
+  push:
+    branches:
+      - develop
   workflow_dispatch:   # 👈 SOLO MANUAL
 
 jobs:
