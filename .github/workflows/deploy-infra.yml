@@ -11,13 +11,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
       - name: Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Destroy infrastructure
-        run: pwsh ./destroy.ps1
+      # 🔥 PURGE APIM (zombie killer)
+      - name: Purge APIM (if soft-deleted)
+        run: |
+          az apim deletedservice purge \
+            --name apim-cardops-demo \
+            --location eastus || echo "No APIM to purge"
+
+      # 💣 DELETE RESOURCE GROUP
+      - name: Destroy Resource Group
+        run: |
+          az group delete \
+            --name rg-cardops-demo \
+            --yes \
+            --no-wait
