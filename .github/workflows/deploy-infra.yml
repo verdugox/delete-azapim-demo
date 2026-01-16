@@ -16,14 +16,14 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # 🔥 PURGE APIM (zombie killer)
-      - name: Purge APIM (if soft-deleted)
+      # 🔥 PURGE APIM (SI EXISTE)
+      - name: Purge APIM soft-deleted
         run: |
           az apim deletedservice purge \
-            --name apim-cardops-demo \
+            --service-name apim-cardops-demo \
             --location eastus || echo "No APIM to purge"
 
-      # 💣 DELETE RESOURCE GROUP
+      # 💣 BORRAR TODO EL RESOURCE GROUP
       - name: Destroy Resource Group
         run: |
           az group delete \
