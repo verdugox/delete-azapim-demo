@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - develop
+  workflow_dispatch:
 
 jobs:
   destroy:
@@ -19,67 +20,79 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       # =====================================
-      # 🔥 PURGE APIM (HARD DELETE)
+      # 🔥 DELETE RESOURCE GROUP (ROOT DELETE)
       # =====================================
-      - name: Purge APIM soft-deleted (if exists)
+      - name: Destroy Resource Group (AKS + APIM + COSMOS)
         run: |
-          echo "🔍 Checking APIM soft-deleted services..."
-          az apim deletedservice purge \
-            --service-name apim-cardops-demo \
-            --location eastus \
-          && echo "✅ APIM soft-delete purged" \
-          || echo "ℹ️ No APIM soft-deleted service found"
+          echo "🧨 Deleting Resource Group rg-cardops-demo (ROOT DELETE)..."
 
-      # =====================================
-      # 🔥 DELETE COSMOS DB (HARD DELETE)
-      # =====================================
-      - name: Delete Cosmos DB account (if exists)
-        run: |
-          echo "🔍 Checking Cosmos DB account..."
-          if az cosmosdb show \
-            --name cosmos-cardops-demo \
-            --resource-group rg-cardops-demo >/dev/null 2>&1; then
-            echo "🧨 Deleting Cosmos DB account..."
-            az cosmosdb delete \
-              --name cosmos-cardops-demo \
-              --resource-group rg-cardops-demo \
-              --yes
-            echo "✅ Cosmos DB deleted"
+          if [ "$(az group exists --name rg-cardops-demo)" = "true" ]; then
+            az group delete \
+              --name rg-cardops-demo \
+              --yes \
+              --no-wait
+            echo "✅ Resource Group deletion initiated"
           else
-            echo "ℹ️ Cosmos DB account does not exist"
+            echo "ℹ️ Resource Group does not exist"
           fi
 
       # =====================================
-      # 💣 DELETE RESOURCE GROUP
+      # 🔥 PURGE APIM SOFT-DELETED (OPTIONAL)
       # =====================================
-      - name: Destroy Resource Group
+      - name: Purge APIM soft-deleted (if exists)
         run: |
-          echo "🧨 Deleting Resource Group rg-cardops-demo..."
-          az group delete \
-            --name rg-cardops-demo \
-            --yes \
-            --no-wait \
-          && echo "✅ Resource Group deletion initiated" \
-          || echo "ℹ️ Resource Group already deleted"
+          echo "🔍 Checking APIM soft-deleted service..."
+
+          az apim deletedservice purge \
+            --service-name apim-cardops-demo \
+            --location eastus \
+            --only-show-errors \
+          && echo "✅ APIM soft-deleted purged" \
+          || echo "ℹ️ No APIM soft-deleted service found"
 
       # =====================================
-      # 🧹 FINAL VALIDATION (REAL CHECK)
+      # 🧹 FINAL VALIDATION
       # =====================================
-      - name: Final validation (no billable resources)
+      - name: Final validation (NO BILLABLE RESOURCES)
         run: |
           echo "🔍 Final validation started..."
 
           RG_EXISTS=$(az group exists --name rg-cardops-demo)
 
           if [ "$RG_EXISTS" = "false" ]; then
-            echo "✅ Resource Group rg-cardops-demo does NOT exist"
+            echo "🎉 ALL RESOURCES DESTROYED"
             echo "✅ AKS deleted"
             echo "✅ APIM deleted"
             echo "✅ Cosmos DB deleted"
-            echo "🎉 ALL RESOURCES DESTROYED SUCCESSFULLY"
-            echo "💸 NO BILLABLE RESOURCES REMAIN"
+            echo "💸 ZERO BILLABLE RESOURCES REMAIN"
           else
-            echo "⚠️ Resource Group rg-cardops-demo STILL EXISTS"
-            echo "⚠️ Azure may still be deleting resources"
-            echo "⚠️ Re-check in a few minutes"
+            echo "⏳ Resource Group still deleting"
+            echo "⏳ Azure deletion is async (normal)"
           fi
+        # =====================================
+  # 🧹 FINAL VALIDATION (REAL & SAFE)
+  # =====================================
+      - name: Final validation (no billable resources)
+        run: |
+          echo "🔍 Final validation started..."
+          
+          RG_EXISTS=$(az group exists --name rg-cardops-demo)
+          
+          if [ "$RG_EXISTS" = "false" ]; then
+            echo ""
+            echo "======================================"
+            echo "✅ RESOURCE GROUP DELETED"
+            echo "✅ AKS DELETED"
+            echo "✅ APIM DELETED"
+            echo "✅ COSMOS DB DELETED"
+            echo ""
+            echo "🎉 ALL RESOURCES WERE SUCCESSFULLY DESTROYED"
+            echo "💸 ZERO BILLABLE RESOURCES REMAIN IN AZURE"
+            echo "======================================"
+          else
+            echo ""
+            echo "⚠️ RESOURCE GROUP STILL EXISTS"
+            echo "⚠️ Azure is still deleting resources"
+            echo "⏳ Please wait a few minutes and re-check"
+          fi
+
