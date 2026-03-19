@@ -7,4 +7,5 @@ az group delete `
   --yes `
   --no-wait
 
+
 Write-Host "✅ Resource Group deletion started"
