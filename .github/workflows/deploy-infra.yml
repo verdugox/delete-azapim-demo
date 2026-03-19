@@ -78,6 +78,7 @@ jobs:
           
           RG_EXISTS=$(az group exists --name rg-cardops-demo)
           
+          
           if [ "$RG_EXISTS" = "false" ]; then
             echo ""
             echo "======================================"
